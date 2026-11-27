@@ -19,24 +19,19 @@ export const unitAt = (s, prov) => s.units.find(u => u.prov === prov);
 export const scCount = (s, power) => Object.values(s.owners).filter(o => o === power).length;
 export const alive = (s, power) => scCount(s, power) > 0 || s.units.some(u => u.power === power);
 
-// Can an army be convoyed from a to b through some chain of sea provinces?
-const convoyCache = {};
-export function convoyable(a, b) {
-  const k = a + b;
-  if (k in convoyCache) return convoyCache[k];
-  let ok = false;
-  if (a !== b && PROVS[a].coast && PROVS[b].coast) {
-    const seen = new Set(), q = FLEET_ADJ[a].filter(n => !PROVS[n].land);
-    q.forEach(n => seen.add(n));
-    while (q.length && !ok) {
-      const n = q.shift();
-      if (FLEET_ADJ[n].includes(b)) ok = true;
-      for (const m of FLEET_ADJ[n]) if (!PROVS[m].land && !seen.has(m)) { seen.add(m); q.push(m); }
-    }
+// Can an army be convoyed from a to b? Only along a chain of sea provinces that each hold a fleet (anyone's).
+export function convoyable(s, a, b) {
+  if (a === b || !PROVS[a].coast || !PROVS[b].coast) return false;
+  const fleetSea = n => !PROVS[n].land && s.units.some(u => u.prov === n && u.type === 'F');
+  const q = FLEET_ADJ[a].filter(fleetSea), seen = new Set(q);
+  while (q.length) {
+    const n = q.shift();
+    if (FLEET_ADJ[n].includes(b)) return true;
+    for (const m of FLEET_ADJ[n]) if (!seen.has(m) && fleetSea(m)) { seen.add(m); q.push(m); }
   }
-  return (convoyCache[k] = ok);
+  return false;
 }
-const reachable = (type, from, to) => canMove(type, from, to) || (type === 'A' && convoyable(from, to));
+const reachable = (s, type, from, to) => canMove(type, from, to) || (type === 'A' && convoyable(s, from, to));
 
 // Normalise a movement-phase order; returns null when illegal. Trust boundary for human input.
 export function validate(s, power, o) {
@@ -44,17 +39,17 @@ export function validate(s, power, o) {
   const u = unitAt(s, o.unit);
   if (!u || u.power !== power) return null;
   if (o.type === 'H') return { unit: u.prov, type: 'H' };
-  if (o.type === 'M') return o.to !== u.prov && PROVS[o.to] && reachable(u.type, u.prov, o.to) ? { unit: u.prov, type: 'M', to: o.to } : null;
+  if (o.type === 'M') return o.to !== u.prov && PROVS[o.to] && reachable(s, u.type, u.prov, o.to) ? { unit: u.prov, type: 'M', to: o.to } : null;
   if (o.type === 'S') {
     const t = unitAt(s, o.from);
     if (!t || t === u || !PROVS[o.to]) return null;
     if (o.to === o.from) return canMove(u.type, u.prov, o.from) ? { unit: u.prov, type: 'S', from: o.from, to: o.from } : null;
-    if (o.to === u.prov || !canMove(u.type, u.prov, o.to) || !reachable(t.type, t.prov, o.to)) return null;
+    if (o.to === u.prov || !canMove(u.type, u.prov, o.to) || !reachable(s, t.type, t.prov, o.to)) return null;
     return { unit: u.prov, type: 'S', from: o.from, to: o.to };
   }
   if (o.type === 'C') {
     const t = unitAt(s, o.from);
-    if (u.type !== 'F' || PROVS[u.prov].land || !t || t.type !== 'A' || !PROVS[o.to] || !convoyable(o.from, o.to)) return null;
+    if (u.type !== 'F' || PROVS[u.prov].land || !t || t.type !== 'A' || !PROVS[o.to] || !convoyable(s, o.from, o.to)) return null;
     return { unit: u.prov, type: 'C', from: o.from, to: o.to };
   }
   return null;

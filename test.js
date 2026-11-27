@@ -1,6 +1,6 @@
 // Run: node test.js   (engine rules + AI smoke games)
 import assert from 'node:assert/strict';
-import { initialState, resolveMovement, resolveRetreats, step, needsOrders, unitAt, scCount } from './shared/engine.js';
+import { initialState, resolveMovement, resolveRetreats, step, needsOrders, unitAt, scCount, validate } from './shared/engine.js';
 import { ARMY_ADJ, FLEET_ADJ, PROVS } from './shared/map.js';
 
 const S = (units, extra = {}) => ({ ...initialState(), units: units.map(([power, type, prov]) => ({ power, type, prov })), ...extra });
@@ -71,6 +71,12 @@ t('beleaguered garrison', () => {
 t('illegal orders become holds', () => {
   const r = resolveMovement(S([['FRA', 'A', 'PAR']]), { FRA: [M('PAR', 'TUN')], GER: [M('PAR', 'BRU')] });
   assert.equal(at(r, 'PAR'), 'FRA');
+});
+t('armies cross water only along a chain of fleets', () => {
+  const s = initialState();
+  for (const to of ['FIN', 'BOS', 'NML']) assert.equal(validate(s, 'GER', M('PRU', to)), null, `PRU->${to}`);
+  assert.equal(validate(S([['BRI', 'A', 'LON']]), 'BRI', M('LON', 'NML')), null, 'no fleet, no convoy');
+  assert.ok(validate(S([['BRI', 'A', 'LON'], ['FRA', 'F', 'CHN']]), 'BRI', M('LON', 'NML')), 'any power\'s fleet can carry it');
 });
 t('retreat collision disbands both', () => {
   const s = { ...S([['FRA', 'A', 'BRU']]), phase: 'R', dislodged: [{ power: 'GER', type: 'A', prov: 'X1', options: ['RHI'] }, { power: 'ITA', type: 'A', prov: 'X2', options: ['RHI'] }] };
