@@ -230,4 +230,9 @@ const server = http.createServer(async (req, res) => {
 // Drop rooms nobody has touched for two days.
 setInterval(() => { for (const [c, r] of rooms) if (!r.clients.size && Date.now() - r.touched > 172800000) { clearTimeout(r.timer); rooms.delete(c); } }, 3600000).unref();
 
+// Render's free tier sleeps after 15 idle minutes, wiping in-memory games. While any game is unfinished,
+// ping our own public URL (Render sets RENDER_EXTERNAL_URL) so it counts as a visitor; with no games it may sleep.
+const SELF = process.env.RENDER_EXTERNAL_URL;
+if (SELF) setInterval(() => { if ([...rooms.values()].some(r => !r.state?.over)) fetch(SELF).catch(() => {}); }, 10 * 60 * 1000).unref();
+
 server.listen(PORT, () => console.log(`Accord running at http://localhost:${PORT}`));

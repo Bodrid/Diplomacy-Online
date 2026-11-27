@@ -164,6 +164,7 @@ function evaluate(s0, r, me, rel, P) {
     }
   }
   score += 2 * r.units.filter(u => u.power === me).length;
+  score -= r.lastResults.filter(o => o.power === me && o.type === 'M' && !o.ok).length; // a bounce wastes the turn
   for (const d of r.dislodged) {
     if (d.power === me) score += d.options.length ? 0.5 : -1.5;
     else if (!pactWith(rel, d.power, s0)) score += 1;
@@ -250,6 +251,8 @@ function moveOrders(s, me, lvl, rel, ctx) {
   const fixed = rel.promises.filter(p => p.key === phaseKey(s) && Math.random() < P.honor)
     .map(p => p.order).filter(o => validate(s, me, o));
   const V = valueMaps(s, me, rel);
+  // Frustration: where we just bounced, look elsewhere this turn (breaks endless standoffs).
+  for (const r of last) if (r.power === me && r.type === 'M' && !r.ok) { V.A[r.to] *= 0.6; V.F[r.to] *= 0.6; }
   if (!P.cands) {
     const fixedUnits = new Set(fixed.map(o => o.unit));
     return generate(s, me, V, P.temp, rel, fixed).map(o => (!fixedUnits.has(o.unit) && o.type !== 'C' && Math.random() < P.blunder ? randomOrder(s, unitAt(s, o.unit)) : o));

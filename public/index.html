@@ -11,7 +11,7 @@
   <main id="home" class="screen">
     <div class="hero">
       <div class="brand"><span class="logo"></span>Accord</div>
-      <h1>Seven powers. One continent.<br><span>Humans and bots at the same table.</span></h1>
+      <h1>Europe, 1901. Seven great powers.<br><span>Humans and bots at the same table.</span></h1>
       <p class="muted">Simultaneous orders, supports, convoys and backstabs. Invite your friends; every empty seat is played by an AI.</p>
     </div>
     <div class="cards">
@@ -76,7 +76,10 @@
         <svg id="map" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet" aria-label="Game map"></svg>
         <div class="map-tools">
           <button id="lastTurnBtn" class="chip" aria-pressed="false">Show last turn</button>
+          <button id="replayBtn" class="chip">▶ Replay turn</button>
+          <button id="narrateBtn" class="chip" aria-pressed="false">🔊 Narrate</button>
         </div>
+        <div id="caption" class="caption" hidden><p id="capText" aria-live="polite"></p><button id="skipBtn">Skip ▸▸</button></div>
         <div id="hoverInfo" class="hover-info"></div>
         <div id="banner" class="banner" hidden></div>
       </div>

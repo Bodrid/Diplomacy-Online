@@ -1,4 +1,4 @@
-import { PROVS, IDS, CELLS, POWERS, ARMY_ADJ, FLEET_ADJ, WIN } from '/shared/map.js';
+import { PROVS, IDS, SHAPES, BORDERS, COAST_D, VOID_D, POWERS, ARMY_ADJ, FLEET_ADJ, WIN } from '/shared/map.js';
 import { validate, unitAt, orderText, adjustments, scCount, needsOrders } from '/shared/engine.js';
 
 const $ = s => document.querySelector(s);
@@ -92,6 +92,10 @@ function onView(v) {
   const s = v.state, key = `${s.year}${s.season}${s.phase}${s.over}`;
   if (key !== phaseKey) { phaseKey = key; draft = v.myOrders.slice(); sel = null; }
   render();
+  // Replay each newly resolved movement phase once (not on page load).
+  const resolved = [...v.log].reverse().find(e => e.results)?.phase ?? '';
+  if (lastReplayed === null) lastReplayed = resolved;
+  else if (resolved !== lastReplayed) { lastReplayed = resolved; replay(s.lastResults); }
 }
 const me = () => V.you.power;
 const canAct = () => !!me() && !V.state.over && needsOrders(V.state).includes(me());
@@ -154,51 +158,63 @@ function line(o, color, fail, s) {
   const a = PROVS[o.unit], cls = fail ? ' fail' : '';
   const end = (b, cut) => { const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1; return [b.x - dx / d * cut, b.y - dy / d * cut]; };
   const mk = `url(#arrow-${fail ? 'fail' : color})`;
-  if (o.type === 'H') return `<circle class="order-ring${cls}" cx="${a.x}" cy="${a.y}" r="17" stroke="${COLORS[color]}"/>`;
+  if (o.type === 'H') return `<circle class="order-ring${cls}" cx="${a.x}" cy="${a.y}" r="12" stroke="${COLORS[color]}"/>`;
   if (o.type === 'M' || o.type === 'R') {
-    const [x, y] = end(PROVS[o.to], 15);
+    const [x, y] = end(PROVS[o.to], 11);
     const mx = (a.x + x) / 2 - (y - a.y) * 0.12, my = (a.y + y) / 2 + (x - a.x) * 0.12;
     return `<path class="order-line${cls}" d="M${a.x},${a.y} Q${mx},${my} ${x},${y}" stroke="${COLORS[color]}" marker-end="${mk}"/>`;
   }
   if (o.type === 'S') {
     const f = PROVS[o.from], t = PROVS[o.to];
-    if (o.from === o.to) { const [x, y] = end(f, 17); return `<path class="order-line support${cls}" d="M${a.x},${a.y} L${x},${y}" stroke="${COLORS[color]}"/><circle class="order-ring${cls}" cx="${f.x}" cy="${f.y}" r="17" stroke="${COLORS[color]}" stroke-dasharray="2 5"/>`; }
+    if (o.from === o.to) { const [x, y] = end(f, 12); return `<path class="order-line support${cls}" d="M${a.x},${a.y} L${x},${y}" stroke="${COLORS[color]}"/><circle class="order-ring${cls}" cx="${f.x}" cy="${f.y}" r="12" stroke="${COLORS[color]}" stroke-dasharray="2 5"/>`; }
     const mx = (f.x + t.x) / 2, my = (f.y + t.y) / 2;
     return `<path class="order-line support${cls}" d="M${a.x},${a.y} L${mx},${my}" stroke="${COLORS[color]}" marker-end="${mk}"/>`;
   }
   if (o.type === 'C') { const f = PROVS[o.from], t = PROVS[o.to]; return `<path class="order-line convoy${cls}" d="M${f.x},${f.y} L${a.x},${a.y} L${t.x},${t.y}" stroke="${COLORS[color]}"/>`; }
   return '';
 }
-function unitSvg(u, x, y, extra = '') {
+function unitSvg(u, x, y, extra = '', id = '') {
   const c = POWERS[u.power].color;
-  const body = u.type === 'A' ? `<circle class="body" r="11" fill="${c}"/>` : `<rect class="body" x="-9.5" y="-9.5" width="19" height="19" rx="4" fill="${c}" transform="rotate(45)"/>`;
-  return `<g class="unit ${extra}" transform="translate(${x},${y})">${body}<text>${u.type}</text></g>`;
+  const body = u.type === 'A' ? `<circle class="body" r="8" fill="${c}"/>` : `<rect class="body" x="-7" y="-7" width="14" height="14" rx="3" fill="${c}" transform="rotate(45)"/>`;
+  return `<g class="unit ${extra}" ${id ? `data-u="${id}"` : ''} style="transform:translate(${x}px,${y}px)">${body}<text>${u.type}</text></g>`;
 }
 
-function renderMap() {
-  const s = V.state, T = targets(), p = me();
+// Provinces, labels and supply centres: everything except units and orders.
+function baseMap(s, T) {
+  const p = me();
   let h = '<defs>' + Object.entries(COLORS).map(([k, c]) => `<marker id="arrow-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join('') + '</defs>';
-  for (const id of IDS) {
+  const prov = id => {
     const pr = PROVS[id], owner = pr.sc && s.owners[id];
     const fill = owner ? ` style="fill:color-mix(in srgb, ${POWERS[owner].color} 42%, var(--land))"` : '';
     const own = unitAt(s, id)?.power === p || s.dislodged?.some(d => d.prov === id && d.power === p);
-    h += `<polygon class="prov ${pr.land ? 'land' : 'sea'} ${T.has(id) ? 'target' : ''} ${own && canAct() ? 'clickable' : ''}" data-id="${id}" points="${CELLS[id].map(q => q.join(',')).join(' ')}"${fill}/>`;
-  }
+    return `<path class="prov ${pr.land ? 'land' : 'sea'} ${T.has(id) ? 'target' : ''} ${own && canAct() ? 'clickable' : ''}" data-id="${id}" d="${SHAPES[id]}"${fill}/>`;
+  };
+  // Seas sit underneath; land (cut to the coastline) is drawn on top, then borders and coasts.
+  h += IDS.filter(id => !PROVS[id].land).map(prov).join('') + `<path class="border-sea" d="${BORDERS.sea}"/>`;
+  h += IDS.filter(id => PROVS[id].land).map(prov).join('') + `<path class="void" d="${VOID_D}"/>`;
+  h += `<path class="border-land" d="${BORDERS.land}"/><path class="coast" d="${COAST_D}"/>`;
   for (const id of IDS) {
     const pr = PROVS[id];
-    h += `<text class="plabel ${pr.land ? '' : 'sea'}" x="${pr.x}" y="${pr.y + 26}">${esc(pr.name)}</text>`;
-    if (pr.sc) h += `<circle class="sc" cx="${pr.x}" cy="${pr.y - 20}" r="4.5" fill="${s.owners[id] ? POWERS[s.owners[id]].color : '#5b6578'}"/>`;
+    h += `<text class="plabel ${pr.land ? '' : 'sea'}" x="${pr.x}" y="${pr.y + 18}">${esc(pr.name)}</text>`;
+    if (pr.sc) h += `<circle class="sc" cx="${pr.x}" cy="${pr.y - 14}" r="3.5" fill="${s.owners[id] ? POWERS[s.owners[id]].color : '#5b6578'}"/>`;
   }
+  return h;
+}
+
+function renderMap() {
+  if (replaying) return;
+  const s = V.state, T = targets(), p = me();
+  let h = baseMap(s, T);
   if (showLast && s.lastResults) for (const r of s.lastResults) if (r.type !== 'H') h += line(r, r.power, !r.ok, s);
   if (p && !showLast) for (const o of draft) if (o.unit && (s.phase === 'M' || o.type === 'R')) h += line(o, p, false, s);
   for (const u of s.units) {
     const x = draft.find(o => o.type === 'X' && o.prov === u.prov && u.power === p);
     h += unitSvg(u, PROVS[u.prov].x, PROVS[u.prov].y, `${sel?.unit === u.prov && s.phase === 'M' ? 'sel' : ''} ${x ? 'dislodged' : ''}`);
-    if (x) h += `<path d="M${PROVS[u.prov].x - 8},${PROVS[u.prov].y - 8} l16,16 m0,-16 l-16,16" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round"/>`;
+    if (x) h += `<path d="M${PROVS[u.prov].x - 6},${PROVS[u.prov].y - 6} l12,12 m0,-12 l-12,12" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round"/>`;
   }
   for (const d of s.dislodged || []) {
-    const x = PROVS[d.prov].x + 16, y = PROVS[d.prov].y + 12;
-    h += `<circle cx="${x}" cy="${y}" r="14" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="3 3"/>` + unitSvg(d, x, y, `dislodged ${sel?.unit === d.prov ? 'sel' : ''}`);
+    const x = PROVS[d.prov].x + 12, y = PROVS[d.prov].y + 9;
+    h += `<circle cx="${x}" cy="${y}" r="10" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="3 3"/>` + unitSvg(d, x, y, `dislodged ${sel?.unit === d.prov ? 'sel' : ''}`);
   }
   for (const o of draft) if (o.type === 'B') h += unitSvg({ power: p, type: o.unitType }, PROVS[o.prov].x, PROVS[o.prov].y, 'dislodged');
   $('#map').innerHTML = h;
@@ -214,7 +230,117 @@ $('#map').addEventListener('mouseover', e => {
 $('#map').addEventListener('mouseleave', () => ($('#hoverInfo').textContent = ''));
 $('#map').addEventListener('click', e => { const id = e.target.closest?.('[data-id]')?.dataset.id; if (id) onProv(id); });
 $('#lastTurnBtn').onclick = () => { showLast = !showLast; $('#lastTurnBtn').setAttribute('aria-pressed', showLast); renderMap(); };
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && sel) { sel = null; render(); } });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (replaying) skip(); else if (sel) { sel = null; render(); } });
+
+// ---------- Turn replay ----------
+// After a movement phase resolves, rewind the units and play each clash: zoom in, draw the orders, show the outcome.
+let replaying = false, skipping = false, lastReplayed = null, narrate = store.get('accord:narrate') === true, vb = [0, 0, 1000, 700];
+const FULL = [0, 0, 1000, 700];
+const PN = p => POWERS[p].name, PV = id => PROVS[id].name, kind = r => (r.utype === 'A' ? 'army' : 'fleet');
+const wait = ms => new Promise(done => { const t0 = Date.now(); (function tick() { skipping || Date.now() - t0 >= ms ? done() : setTimeout(tick, 30); })(); });
+const setVB = b => { vb = b; $('#map').setAttribute('viewBox', b.map(n => n.toFixed(1)).join(' ')); };
+function skip() { skipping = true; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+$('#skipBtn').onclick = skip;
+$('#replayBtn').onclick = () => replay(V?.state?.lastResults);
+$('#narrateBtn').setAttribute('aria-pressed', narrate);
+$('#narrateBtn').onclick = () => { narrate = !narrate; store.set('accord:narrate', narrate); $('#narrateBtn').setAttribute('aria-pressed', narrate); if (!narrate) speechSynthesis?.cancel(); };
+
+function zoomTo(b, ms = 650) {
+  const from = vb.slice(), t0 = performance.now();
+  if (skipping || matchMedia('(prefers-reduced-motion: reduce)').matches) return setVB(b);
+  return new Promise(done => requestAnimationFrame(function step(now) {
+    const k = Math.min(1, (now - t0) / ms), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    setVB(from.map((v, i) => v + (b[i] - v) * e));
+    if (k < 1 && !skipping) requestAnimationFrame(step); else { setVB(b); done(); }
+  }));
+}
+function boxAround(ids) {
+  const xs = ids.map(i => PROVS[i].x), ys = ids.map(i => PROVS[i].y);
+  const x0 = Math.min(...xs) - 90, x1 = Math.max(...xs) + 90, y0 = Math.min(...ys) - 80, y1 = Math.max(...ys) + 80;
+  let w = Math.max(x1 - x0, 320), h = Math.max(y1 - y0, 224);
+  if (w / h > 10 / 7) h = w * 0.7; else w = h / 0.7;
+  w = Math.min(w, 1000); h = Math.min(h, 700);
+  return [Math.min(Math.max((x0 + x1) / 2 - w / 2, 0), 1000 - w), Math.min(Math.max((y0 + y1) / 2 - h / 2, 0), 700 - h), w, h];
+}
+
+// One beat per contested province: the moves into it, supports and convoys aimed at it, and whoever stands there.
+function beats(results) {
+  const at = Object.fromEntries(results.map(r => [r.unit, r])), groups = new Map();
+  for (const r of results) if (r.type === 'M' || ((r.type === 'S' || r.type === 'C') && !r.void)) {
+    if (!groups.has(r.to)) groups.set(r.to, new Set());
+    groups.get(r.to).add(r);
+  }
+  const out = [];
+  for (const [t, set] of groups) {
+    const moves = [...set].filter(r => r.type === 'M');
+    if (!moves.length) continue;
+    const d = at[t] && !(at[t].type === 'M' && at[t].ok) ? at[t] : null;
+    if (d) set.add(d);
+    const list = [...set];
+    const drama = (d?.dislodged ? 3 : 0) + list.filter(r => r !== d && !r.ok).length * 2 + list.length;
+    out.push({ t, list, moves, d, drama, quiet: list.length === 1 && moves[0].ok });
+  }
+  return out.sort((a, b) => b.drama - a.drama);
+}
+
+function caption({ t, list, moves, d }) {
+  const sup = m => list.filter(r => r.type === 'S' && r.from === m.unit && r.ok).length;
+  const w = n => (n ? ` with ${n} support${n > 1 ? 's' : ''}` : '');
+  const win = moves.find(m => m.ok);
+  let text;
+  if (win && d?.dislodged) text = `${PN(win.power)} storms ${PV(t)}${w(sup(win))}, dislodging ${PN(d.power)}'s ${kind(d)}.`;
+  else if (win) text = `${PN(win.power)}'s ${kind(win)} ${win.utype === 'F' ? 'sails' : 'marches'} into ${PV(t)}${win.convoy ? ' by convoy' : ''}${w(sup(win))}.`;
+  else if (moves.length > 1) text = `Standoff in ${PV(t)}: ${[...new Set(moves.map(m => PN(m.power)))].join(' and ')} bounce${d ? ` while ${PN(d.power)} holds` : ''}.`;
+  else if (d) text = `${PN(d.power)} holds ${PV(t)} against ${PN(moves[0].power)}${w(list.filter(r => r.type === 'S' && r.from === t && r.ok).length)}.`;
+  else text = `${PN(moves[0].power)}'s move into ${PV(t)} fails.`;
+  return [text, ...list.filter(r => r.type === 'S' && !r.ok).map(r => `${PN(r.power)}'s support from ${PV(r.unit)} was cut.`)].join(' ');
+}
+
+async function replay(results) {
+  if (!results?.length || replaying || !V?.started) return;
+  replaying = true; skipping = false;
+  const svg = $('#map'), all = beats(results);
+  const loud = all.filter(b => !b.quiet).slice(0, 8), quiet = all.filter(b => !loud.includes(b));
+  svg.innerHTML = baseMap(V.state, new Set()) + '<g id="fx"></g>' +
+    results.map(r => unitSvg({ power: r.power, type: r.utype }, PROVS[r.unit].x, PROVS[r.unit].y, '', r.unit)).join('');
+  svg.classList.add('replay');
+  $('#caption').hidden = false;
+  const fx = $('#fx'), unitEl = id => svg.querySelector(`[data-u="${id}"]`);
+  const say = text => {
+    $('#capText').textContent = text;
+    if (narrate && 'speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); }
+  };
+  const stamp = (id, ok) => fx.insertAdjacentHTML('beforeend', `<g transform="translate(${PROVS[id].x + 11},${PROVS[id].y - 11})"><g class="stamp ${ok ? 'ok' : 'no'}"><circle r="8"/><text>${ok ? '✓' : '✕'}</text></g></g>`);
+  const play = async (bs, box, text) => {
+    await zoomTo(box);
+    say(text);
+    fx.innerHTML = '';
+    for (const b of bs) for (const r of b.list) {
+      fx.insertAdjacentHTML('beforeend', `<g class="fx-in" data-r="${r.unit}">${line(r === b.d ? { ...r, type: 'H' } : r, r.power, false)}</g>`);
+      fx.lastElementChild.querySelectorAll('path.order-line:not(.support):not(.convoy)').forEach(p => { p.setAttribute('pathLength', 1); p.classList.add('fx-draw'); });
+      await wait(140);
+    }
+    await wait(800);
+    for (const b of bs) {
+      const win = b.moves.find(m => m.ok);
+      for (const r of b.list) {
+        if (r.type === 'M' && r.ok) unitEl(r.unit).style.transform = `translate(${PROVS[r.to].x}px,${PROVS[r.to].y}px)`;
+        else if (r !== b.d && !r.ok) fx.querySelector(`[data-r="${r.unit}"]`)?.classList.add('fx-fail');
+      }
+      if (b.d?.dislodged) { const u = unitEl(b.d.unit); u.classList.add('beaten'); u.style.transform = `translate(${PROVS[b.t].x + 12}px,${PROVS[b.t].y + 9}px)`; }
+      stamp(b.t, !!win);
+    }
+    await wait(bs.length > 1 ? 1400 : 2000);
+  };
+  for (const b of loud) await play([b], boxAround([b.t, ...b.list.flatMap(r => [r.unit, r.from].filter(Boolean))]), caption(b));
+  if (quiet.length) await play(quiet, FULL, quiet.length === 1 ? caption(quiet[0]) : `${quiet.length} other units move unopposed.`);
+  await wait(skipping ? 0 : 300);
+  await zoomTo(FULL);
+  svg.classList.remove('replay');
+  $('#caption').hidden = true;
+  replaying = false;
+  renderMap();
+}
 
 // ---------- Order entry ----------
 function setOrder(o) {
@@ -232,7 +358,7 @@ const sync = act(async ready => {
 });
 
 function onProv(id) {
-  if (!canAct() || isReady()) return;
+  if (replaying || !canAct() || isReady()) return;
   const s = V.state, p = me(), u = unitAt(s, id), T = targets();
   if (s.phase === 'M') {
     if (!sel) { if (u?.power === p) sel = { unit: id, mode: 'M' }; return render(); }
