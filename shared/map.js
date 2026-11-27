@@ -17,7 +17,7 @@ export const POWERS = {
 // [id, name, lon, lat, supplyCentre, homePower, startUnit, extraSites]
 const LAND = [
   // Britain & Ireland
-  ['LON', 'London', 0.0, 51.5, 1, 'BRI', 'F'],
+  ['LON', 'London', 0.0, 51.5, 1, 'BRI', 'F', [[0.6, 51.3]]],
   ['MAN', 'Manchester', -2.4, 53.5, 1, 'BRI', 'A'],
   ['GLA', 'Glasgow', -4.4, 55.9, 1, 'BRI', 'F'],
   ['HIG', 'Highlands', -4.3, 57.5, 0],
@@ -32,7 +32,8 @@ const LAND = [
   ['BOR', 'Bordeaux', -0.6, 44.8, 1, 'FRA', 'F'],
   ['BRT', 'Brittany', -2.9, 48.1, 0],
   ['NML', 'Normandy', 0.2, 49.2, 0],
-  ['FLA', 'Flanders', 3.0, 50.5, 0],
+  ['FLA', 'Flanders', 2.4, 50.3, 0],
+  ['CHA', 'Champagne', 4.6, 49.2, 0],
   ['MAR', 'Provence', 5.7, 43.7, 0],
   ['TOU', 'Toulouse', 1.4, 43.6, 0],
   ['CSC', 'Corsica', 9.1, 42.6, 0, null, null, [[9.0, 42.0]]],
@@ -48,6 +49,7 @@ const LAND = [
   ['MEC', 'Mecklenburg', 12.0, 53.7, 0],
   ['PRU', 'East Prussia', 20.6, 54.3, 1, 'GER', 'A'],
   ['BRS', 'Breslau', 17.1, 51.1, 0],
+  ['POS', 'Posen', 17.2, 52.5, 0],
   // Austria-Hungary
   ['VIE', 'Vienna', 16.4, 48.2, 1, 'AUS', 'A'],
   ['BUD', 'Budapest', 19.1, 47.4, 1, 'AUS', 'A'],
@@ -111,7 +113,7 @@ const LAND = [
   ['BIL', 'Basque Lands', -2.4, 42.9, 0],
   ['AMS', 'Holland', 5.6, 52.3, 1],
   ['BRU', 'Belgium', 4.5, 50.7, 1],
-  ['DEN', 'Denmark', 9.2, 56.1, 1, null, null, [[11.75, 55.45], [10.2, 55.25]]],
+  ['DEN', 'Denmark', 9.2, 56.1, 1, null, null, [[11.75, 55.45], [10.2, 55.25], [9.9, 55.4]]],
   ['OSL', 'Christiania', 10.4, 60.2, 1],
   ['BRG', 'Bergen', 6.5, 61.0, 0],
   ['AGD', 'Agder', 7.8, 58.6, 0],
@@ -129,6 +131,60 @@ const LAND = [
   ['TUN', 'Tunis', 9.7, 36.2, 1],
   ['ALG', 'Algiers', 3.0, 36.2, 0],
   ['MOR', 'Morocco', -4.5, 35.5, 0, null, null, [[-5.6, 35.65]]],
+];
+// The rest of each power's 1901 territory (home centres count too). Neutral supply centres stay neutral.
+const REGION = {
+  BRI: 'HIG NEW WAL DEV',
+  FRA: 'BRT NML FLA CHA MAR TOU CSC ALG',
+  GER: 'RHI ALS FRK SAX POM MEC BRS POS',
+  AUS: 'PRG SLZ TRA BOS',
+  ITA: 'GEN VEN FLO BAR CAL SAR',
+  RUS: 'FIN KRL VOL NOV NIZ RIG LIT MIN SMO KIE KHR VLG DON CRI CAU',
+  OTT: 'BUS ANK KON ADA TRE ERZ ALB',
+};
+// Countries of the neutral provinces (for drawing national borders).
+const NATION = {
+  SPA: 'MAD BCN AND LEO VAL BIL', POR: 'LIS OPO', NED: 'AMS', BLG: 'BRU', DNK: 'DEN', NOR: 'OSL BRG TRD AGD',
+  SWE: 'STO GOT NRL LAP', SUI: 'SWI', SRB: 'BEL', ROM: 'BUC MOL', BUL: 'SOF', GRE: 'ATH EPI', MOR: 'MOR', TUN: 'TUN',
+};
+// National borders of 1901 [countryA, countryB, [lon, lat]...]. Province edges snap onto these lines.
+const FRONTIERS = [
+  ['FRA', 'SPA', [[-1.78, 43.36], [-1.4, 43.05], [-0.8, 42.95], [0.0, 42.7], [0.7, 42.85], [1.45, 42.6], [2.0, 42.4], [3.17, 42.43]]],
+  ['SPA', 'POR', [[-8.9, 41.87], [-8.2, 42.1], [-7.0, 41.95], [-6.2, 41.6], [-6.9, 41.0], [-6.9, 40.3], [-7.0, 39.65], [-7.3, 39.0], [-7.0, 38.2], [-7.5, 37.55], [-7.4, 37.2]]],
+  ['FRA', 'BLG', [[2.55, 51.08], [2.9, 50.7], [3.3, 50.5], [4.2, 50.3], [4.8, 50.15], [4.9, 49.8], [5.8, 49.55]]],
+  ['BLG', 'NED', [[3.35, 51.37], [4.3, 51.35], [5.0, 51.45], [5.7, 51.2], [5.85, 50.75]]],
+  ['BLG', 'GER', [[5.85, 50.75], [6.3, 50.3], [6.0, 49.9], [5.8, 49.55]]],
+  ['NED', 'GER', [[7.2, 53.25], [7.05, 52.65], [7.05, 52.25], [6.75, 51.95], [6.0, 51.85], [6.2, 51.4], [6.05, 51.05], [5.85, 50.75]]],
+  ['DNK', 'GER', [[8.62, 55.45], [9.2, 55.42], [9.6, 55.4]]],
+  ['FRA', 'GER', [[5.8, 49.55], [5.95, 49.15], [6.4, 48.8], [6.85, 48.55], [7.05, 48.15], [6.95, 47.75], [7.0, 47.5]]],
+  ['GER', 'SUI', [[7.0, 47.5], [7.6, 47.59], [8.2, 47.6], [8.6, 47.75], [9.0, 47.65], [9.6, 47.5]]],
+  ['FRA', 'SUI', [[7.0, 47.5], [6.9, 47.35], [6.45, 46.95], [6.1, 46.55], [6.1, 46.2], [6.8, 46.35], [7.05, 45.95]]],
+  ['FRA', 'ITA', [[7.05, 45.95], [6.85, 45.6], [7.05, 45.2], [6.65, 44.9], [6.9, 44.4], [7.7, 44.15], [7.5, 43.78]]],
+  ['ITA', 'SUI', [[7.05, 45.95], [7.9, 45.95], [8.45, 46.45], [8.8, 46.1], [9.0, 45.85], [9.3, 46.5], [10.1, 46.25], [10.45, 46.55]]],
+  ['AUS', 'SUI', [[9.6, 47.5], [9.5, 47.05], [9.9, 46.9], [10.45, 46.9], [10.45, 46.55]]],
+  ['AUS', 'ITA', [[10.45, 46.55], [10.6, 45.95], [11.1, 45.8], [11.7, 46.0], [12.4, 46.2], [12.75, 46.6], [13.4, 46.5], [13.55, 46.15], [13.35, 45.72]]],
+  ['GER', 'AUS', [[9.6, 47.5], [10.2, 47.3], [10.9, 47.45], [11.6, 47.6], [12.2, 47.65], [12.9, 47.7], [12.95, 48.2], [13.45, 48.57], [13.85, 48.75],
+    [13.0, 49.3], [12.45, 49.75], [12.1, 50.25], [12.5, 50.4], [13.4, 50.6], [14.3, 50.9], [15.0, 50.85], [15.8, 50.7], [16.4, 50.6], [16.9, 50.2],
+    [17.7, 50.25], [18.3, 49.95], [18.9, 50.0], [19.15, 50.25]]],
+  ['GER', 'RUS', [[19.15, 50.25], [18.95, 50.8], [18.55, 51.25], [17.95, 51.7], [18.4, 52.4], [18.95, 52.9], [19.8, 53.1], [21.0, 53.25], [22.0, 53.45],
+    [22.8, 54.35], [22.85, 54.85], [22.4, 55.1], [21.3, 55.25], [21.07, 56.07]]],
+  ['AUS', 'RUS', [[19.15, 50.25], [20.0, 50.25], [21.2, 50.4], [22.1, 50.6], [23.2, 50.4], [24.1, 50.65], [25.1, 50.1], [26.0, 49.6], [26.2, 48.7], [26.6, 48.25]]],
+  ['AUS', 'ROM', [[26.6, 48.25], [25.9, 47.95], [25.3, 47.7], [25.9, 47.15], [26.2, 46.6], [26.4, 46.0], [26.1, 45.55], [25.5, 45.4], [24.5, 45.4],
+    [23.5, 45.3], [22.7, 45.0], [22.5, 44.6]]],
+  ['ROM', 'RUS', [[26.6, 48.25], [27.6, 47.6], [28.1, 46.8], [28.2, 46.0], [28.2, 45.5], [28.8, 45.4], [29.7, 45.2]]],
+  ['AUS', 'SRB', [[22.5, 44.6], [21.5, 44.75], [20.5, 44.85], [19.6, 44.85], [19.25, 44.4], [19.5, 43.9], [19.55, 43.45]]],
+  ['AUS', 'OTT', [[19.55, 43.45], [19.0, 43.2], [18.6, 42.75], [18.55, 42.42]]],
+  ['SRB', 'ROM', [[22.5, 44.6], [22.68, 44.21]]],
+  ['SRB', 'OTT', [[19.55, 43.45], [20.3, 43.15], [21.0, 42.85], [21.7, 42.6], [22.4, 42.35]]],
+  ['SRB', 'BUL', [[22.4, 42.35], [22.9, 42.9], [22.65, 43.4], [22.4, 43.85], [22.68, 44.21]]],
+  ['ROM', 'BUL', [[22.68, 44.21], [23.5, 43.8], [24.5, 43.7], [25.5, 43.65], [26.6, 44.05], [27.3, 44.1], [27.9, 43.95], [28.6, 43.75]]],
+  ['BUL', 'OTT', [[22.4, 42.35], [22.9, 41.95], [23.6, 41.55], [24.5, 41.55], [25.5, 41.35], [26.35, 41.75], [27.1, 42.05], [28.0, 41.98]]],
+  ['GRE', 'OTT', [[20.9, 39.05], [21.3, 39.45], [21.9, 39.85], [22.6, 39.95]]],
+  ['NOR', 'SWE', [[11.1, 59.0], [11.7, 59.6], [12.6, 60.1], [12.3, 61.0], [12.15, 61.8], [12.2, 62.4], [12.1, 63.0], [12.6, 63.9], [13.9, 64.6],
+    [14.5, 65.4], [15.4, 66.2], [16.0, 66.6]]],
+  ['SWE', 'RUS', [[24.15, 65.85], [23.9, 66.6]]],
+  ['FRA', 'TUN', [[8.6, 36.95], [8.4, 36.0]]],
+  ['RUS', 'OTT', [[41.55, 41.5], [42.4, 41.3], [42.8, 40.7], [43.4, 40.3], [44.1, 39.8], [44.8, 39.6]]],
 ];
 // Impassable land (drawn, not played): the Levant, Mesopotamia, Persia.
 const VOID = [[38.0, 36.0], [42.5, 36.6], [46.2, 38.6]];
@@ -180,8 +236,10 @@ const COASTLINES = [
     [21.5, 61.8], [21.2, 62.4], [21.6, 63.1], [22.8, 63.9], [24.5, 64.8], [25.4, 65.0], [24.6, 65.6], [24.15, 65.85], [22.2, 65.6], [21.2, 64.75],
     [20.3, 63.8], [18.6, 63.2], [17.4, 62.4], [17.2, 61.6], [17.2, 60.7], [18.6, 60.2], [19.0, 59.7], [18.4, 59.3], [17.0, 58.7], [16.6, 57.8],
     [16.4, 56.7], [15.6, 56.15], [14.3, 55.95], [14.2, 55.45], [12.9, 55.4], [12.95, 55.6], [12.8, 56.1], [12.85, 56.65], [12.0, 57.7], [11.4, 58.3],
-    [11.1, 59.0], [10.6, 59.4], [10.75, 59.85], [10.4, 59.3], [9.6, 59.0], [8.8, 58.45], [8.0, 58.1], [7.0, 58.0], [6.0, 58.4], [5.6, 58.9],
-    [5.3, 59.4], [5.0, 60.4], [4.9, 61.2], [5.3, 62.3], [7.0, 62.8], [8.6, 63.5], [10.4, 64.2], [11.5, 64.9], [12.5, 65.9], [13.2, 66.6],
+    [11.1, 59.0], [10.65, 59.35], [10.75, 59.88], [10.45, 59.45], [10.0, 59.05], [9.4, 58.87], [8.77, 58.46], [8.0, 58.12], [7.05, 57.98], [6.0, 58.42],
+    [5.6, 58.95], [5.9, 59.25], [5.3, 59.4], [5.25, 59.9], [5.05, 60.4], [4.95, 61.0], [6.7, 61.12], [5.0, 61.28], [4.95, 61.6], [5.1, 62.2],
+    [6.15, 62.5], [7.0, 62.8], [7.7, 63.1], [8.7, 63.42], [10.3, 63.4], [9.5, 63.62], [10.0, 63.9], [11.0, 64.45], [11.5, 64.95], [12.2, 65.5],
+    [12.6, 66.1], [13.2, 66.6],
     [13.6, 67.6], [47.5, 67.6], [47.5, 35.0], [36.0, 35.0], [35.8, 35.55], [35.95, 36.3], [36.15, 36.6], [35.0, 36.75], [34.6, 36.8], [33.9, 36.3],
     [32.8, 36.05], [32.0, 36.55], [30.7, 36.85], [29.6, 36.2], [29.1, 36.6], [28.2, 36.75], [27.4, 37.0], [27.25, 37.85], [27.0, 38.4], [26.3, 38.3],
     [26.7, 38.8], [26.7, 39.3], [26.9, 39.55], [26.45, 40.0], [26.8, 40.3], [27.5, 40.4], [28.9, 40.45], [29.1, 40.7], [28.9, 40.95],
@@ -199,7 +257,7 @@ const COASTLINES = [
   [ // Black Sea and Sea of Azov (hole)
     [29.25, 41.3], [29.6, 41.2], [31.4, 41.3], [32.6, 41.85], [33.8, 42.0], [35.15, 42.05], [36.3, 41.4], [37.5, 41.1], [39.7, 41.0], [41.6, 41.6],
     [41.7, 42.2], [41.0, 43.0], [39.7, 43.6], [37.8, 44.7], [36.75, 45.2], [37.3, 45.4], [38.3, 46.1], [38.9, 47.2], [37.5, 47.05], [36.8, 46.75],
-    [35.4, 46.45], [34.8, 46.2], [35.4, 45.45], [36.0, 45.45], [36.5, 45.25], [35.4, 45.0], [34.2, 44.45], [33.5, 44.6], [33.35, 45.2], [33.6, 46.0],
+    [35.4, 46.45], [34.8, 46.2], [35.4, 45.45], [36.0, 45.45], [36.5, 45.25], [35.4, 45.0], [34.2, 44.45], [33.5, 44.6], [33.4, 45.15], [32.5, 45.38], [33.0, 45.9], [33.6, 46.05],
     [32.6, 46.1], [31.5, 46.6], [30.75, 46.45], [30.2, 46.0], [29.7, 45.2], [28.65, 44.15], [27.95, 43.2], [27.5, 42.5], [28.0, 41.65], [28.9, 41.35],
   ],
   [ // North Africa
@@ -208,17 +266,22 @@ const COASTLINES = [
     [10.6, 36.4], [10.64, 35.83], [11.07, 35.5], [11.0, 33.0],
   ],
   [ // Great Britain
-    [1.4, 51.15], [1.45, 51.35], [0.9, 51.5], [1.3, 51.9], [1.75, 52.5], [1.3, 52.95], [0.3, 52.85], [0.35, 53.5], [0.1, 53.6], [-0.1, 54.1],
-    [-0.6, 54.5], [-1.15, 54.65], [-1.4, 55.0], [-2.0, 55.75], [-2.5, 56.0], [-2.6, 56.3], [-2.5, 56.6], [-2.05, 57.15], [-1.8, 57.5], [-2.0, 57.7],
-    [-3.0, 57.65], [-4.0, 57.6], [-3.5, 57.9], [-3.0, 58.4], [-3.1, 58.65], [-5.0, 58.6], [-5.3, 58.2], [-5.7, 57.5], [-5.7, 56.9], [-6.2, 56.3],
-    [-5.6, 56.0], [-5.6, 55.3], [-4.85, 55.85], [-4.65, 55.45], [-5.15, 54.85], [-4.4, 54.7], [-3.3, 54.9], [-3.5, 54.4], [-3.0, 54.05], [-3.05, 53.45],
-    [-3.4, 53.35], [-4.6, 53.3], [-4.75, 52.8], [-4.2, 52.4], [-4.6, 52.1], [-5.25, 51.75], [-4.2, 51.6], [-3.2, 51.45], [-2.7, 51.5], [-3.4, 51.2],
-    [-4.5, 51.0], [-5.1, 50.5], [-5.7, 50.05], [-5.2, 50.0], [-4.15, 50.35], [-3.65, 50.2], [-3.4, 50.6], [-2.45, 50.55], [-1.4, 50.8], [-0.15, 50.8],
-    [0.25, 50.75], [0.95, 50.9],
+    [1.38, 51.13], [1.45, 51.38], [0.7, 51.45], [1.0, 51.75], [1.3, 51.95], [1.6, 52.1], [1.75, 52.48], [1.3, 52.93], [0.5, 52.95], [0.2, 52.8],
+    [0.35, 53.15], [0.13, 53.58], [-0.08, 54.12], [-0.4, 54.28], [-0.62, 54.49], [-1.2, 54.68], [-1.37, 54.9], [-1.42, 55.02], [-2.0, 55.77], [-2.13, 55.9],
+    [-2.5, 56.0], [-2.58, 56.28], [-2.8, 56.34], [-2.9, 56.45], [-2.55, 56.55], [-2.45, 56.7], [-2.07, 57.15], [-1.78, 57.5], [-2.0, 57.69], [-3.0, 57.7],
+    [-4.1, 57.55], [-3.77, 57.86], [-4.0, 57.88], [-3.65, 58.12], [-3.08, 58.44], [-3.02, 58.64], [-3.37, 58.67], [-3.52, 58.6], [-5.0, 58.62], [-5.25, 58.15],
+    [-5.15, 57.9], [-5.75, 57.75], [-5.7, 57.28], [-5.83, 57.0], [-6.2, 56.72], [-5.5, 56.4], [-5.6, 56.0], [-5.75, 55.6], [-5.8, 55.3], [-5.5, 55.45],
+    [-4.9, 55.9], [-4.85, 55.75], [-4.65, 55.45], [-4.85, 55.25], [-4.85, 54.65], [-4.4, 54.68], [-3.6, 54.95], [-3.2, 54.95], [-3.5, 54.72], [-3.65, 54.5],
+    [-3.25, 54.1], [-2.9, 54.05], [-3.05, 53.8], [-3.05, 53.45], [-3.15, 53.4], [-3.5, 53.32], [-3.85, 53.33], [-4.6, 53.4], [-4.5, 53.15], [-4.75, 52.8],
+    [-4.4, 52.88], [-4.05, 52.72], [-4.08, 52.42], [-4.68, 52.1], [-5.3, 51.88], [-5.05, 51.7], [-4.7, 51.67], [-3.95, 51.6], [-3.17, 51.45], [-2.7, 51.5],
+    [-3.0, 51.33], [-3.48, 51.2], [-4.12, 51.21], [-4.53, 51.0], [-4.55, 50.83], [-5.1, 50.42], [-5.48, 50.21], [-5.72, 50.07], [-5.2, 49.96], [-5.05, 50.15],
+    [-4.15, 50.33], [-3.64, 50.22], [-3.5, 50.45], [-3.4, 50.6], [-2.95, 50.72], [-2.45, 50.52], [-1.95, 50.7], [-1.4, 50.82], [-0.78, 50.73], [-0.14, 50.82],
+    [0.25, 50.74], [0.97, 50.91],
   ],
   [ // Ireland
-    [-6.15, 53.35], [-6.0, 52.95], [-6.35, 52.2], [-7.0, 52.15], [-8.3, 51.8], [-9.8, 51.45], [-10.3, 51.95], [-9.9, 52.6], [-9.4, 53.0], [-9.05, 53.25],
-    [-10.1, 53.5], [-9.9, 54.2], [-8.5, 54.3], [-8.7, 54.8], [-7.35, 55.4], [-6.2, 55.2], [-5.9, 54.65], [-5.5, 54.4], [-6.3, 54.0],
+    [-6.2, 53.35], [-6.05, 53.38], [-6.0, 52.98], [-6.35, 52.33], [-6.37, 52.17], [-7.0, 52.13], [-7.85, 51.95], [-8.3, 51.8], [-8.5, 51.65], [-9.8, 51.45],
+    [-10.45, 52.15], [-9.7, 52.6], [-9.93, 52.56], [-9.45, 52.95], [-9.05, 53.25], [-10.2, 53.4], [-10.1, 53.95], [-10.0, 54.25], [-9.2, 54.25], [-8.5, 54.3],
+    [-8.4, 54.6], [-8.75, 54.7], [-8.3, 55.15], [-7.35, 55.38], [-6.15, 55.22], [-5.9, 54.65], [-5.45, 54.45], [-5.6, 54.3], [-6.3, 54.0], [-6.25, 53.72],
   ],
   [[10.95, 55.7], [11.1, 55.25], [12.1, 55.0], [12.6, 55.5], [12.45, 56.0], [11.8, 55.95]], // Zealand
   [[9.75, 55.5], [10.5, 55.45], [10.8, 55.1], [10.2, 54.95], [9.7, 55.15]], // Funen
@@ -226,6 +289,11 @@ const COASTLINES = [
   [[9.25, 41.25], [9.8, 40.9], [9.65, 40.0], [9.6, 39.15], [9.0, 39.0], [8.4, 38.95], [8.4, 39.9], [8.15, 40.6], [8.3, 41.1], [8.9, 40.95]], // Sardinia
   [[12.4, 38.1], [13.3, 38.2], [14.5, 38.05], [15.55, 38.27], [15.1, 37.3], [15.25, 36.7], [14.4, 36.75], [12.6, 37.6]], // Sicily
 ].map(poly => poly.map(P));
+// Shapes are filled with the nonzero rule, so the Black Sea (a hole) must wind opposite to the mainland.
+{
+  const signed = poly => poly.reduce((s, p, i) => { const q = poly[(i + 1) % poly.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0);
+  if (Math.sign(signed(COASTLINES[0])) === Math.sign(signed(COASTLINES[1]))) COASTLINES[1].reverse();
+}
 
 // ---------- Geometry ----------
 const site = (prov, ll) => { const [x, y] = P(ll); return { prov, x, y }; };
@@ -233,10 +301,43 @@ const landSites = [], seaSites = [];
 export const PROVS = {};
 for (const [id, name, lon, lat, sc, home, unit, extra = []] of LAND) {
   const [x, y] = P([lon, lat]);
-  PROVS[id] = { id, name, land: true, x, y, sc: !!sc, home: home || null, unit: unit || null };
+  // Marker position is kept on the board (Morocco's site is just south of the bottom edge).
+  PROVS[id] = { id, name, land: true, x, y: Math.min(y, H - 10), sc: !!sc, home: home || null, unit: unit || null };
   for (const ll of [[lon, lat], ...extra]) landSites.push(site(id, ll));
 }
+for (const p in REGION) for (const id of REGION[p].split(' ')) PROVS[id].region = p;
+for (const id in PROVS) PROVS[id].region ||= PROVS[id].home;
 for (const ll of VOID) landSites.push(site(null, ll));
+
+// Snap provinces to real frontiers: along each border, put a pair of sites just either side of the line.
+// The Voronoi edge between each pair then lies on the border. Each side's site joins the province of that
+// country that already covers the spot.
+const country = {};
+for (const id in PROVS) if (PROVS[id].region) country[id] = PROVS[id].region;
+for (const c in NATION) for (const id of NATION[c].split(' ')) country[id] = c;
+const sitesOf = c => landSites.filter(s => s.prov && country[s.prov] === c);
+const closest = (list, x, y) => list.reduce((b, s) => ((s.x - x) ** 2 + (s.y - y) ** 2 < (b.x - x) ** 2 + (b.y - y) ** 2 ? s : b));
+const frontierSites = [];
+for (const [A, B, line] of FRONTIERS) {
+  const pts = line.map(P), sa = sitesOf(A), sb = sitesOf(B), samples = [];
+  for (let i = 0; i < pts.length - 1; i++) { // every segment gets samples at its midpoints, never at the vertices
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], len = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.round(len / 7));
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n;
+      samples.push({ x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t, nx: -(y1 - y0) / len, ny: (x1 - x0) / len });
+    }
+  }
+  // Which side is A's? Decided once per line by majority vote, so it can't flip at sharp corners.
+  const pull = (qx, qy) => Math.hypot(closest(sa, qx, qy).x - qx, closest(sa, qx, qy).y - qy) - Math.hypot(closest(sb, qx, qy).x - qx, closest(sb, qx, qy).y - qy);
+  const vote = samples.reduce((v, s) => v + Math.sign(pull(s.x - s.nx * 2, s.y - s.ny * 2) - pull(s.x + s.nx * 2, s.y + s.ny * 2)), 0);
+  const side = vote >= 0 ? 1 : -1;
+  for (const s of samples) {
+    const qa = [s.x + side * s.nx * 2, s.y + side * s.ny * 2], qb = [s.x - side * s.nx * 2, s.y - side * s.ny * 2];
+    frontierSites.push({ prov: closest(sa, ...qa).prov, x: qa[0], y: qa[1] }, { prov: closest(sb, ...qb).prov, x: qb[0], y: qb[1] });
+  }
+}
+landSites.push(...frontierSites);
+
 for (const [id, name, lon, lat, extra = []] of SEA) {
   const [x, y] = P([lon, lat]);
   PROVS[id] = { id, name, land: false, x, y, sc: false, home: null, unit: null };
@@ -260,7 +361,30 @@ function clipHalf(poly, a, b) {
   }
   return out;
 }
-const voronoi = sites => sites.map(a => sites.reduce((poly, b) => (b === a ? poly : clipHalf(poly, a, b)), [[0, 0], [W, 0], [W, H], [0, H]]));
+// Voronoi cells via a spatial grid: a cell of radius r can only be cut by sites within 2r, so grow the search
+// radius until that holds. Also returns the index pairs that may share an edge.
+function voronoi(sites) {
+  const G = 40, grid = new Map(), cells = [], radius = [], pairs = [];
+  sites.forEach((s, i) => { const k = Math.floor(s.x / G) * 1000 + Math.floor(s.y / G); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i); });
+  const around = (s, R) => {
+    const out = [], n = Math.ceil(R / G) + 1, gx = Math.floor(s.x / G), gy = Math.floor(s.y / G);
+    for (let i = gx - n; i <= gx + n; i++) for (let j = gy - n; j <= gy + n; j++) for (const k of grid.get(i * 1000 + j) || []) out.push(k);
+    return out;
+  };
+  sites.forEach((a, ai) => {
+    for (let R = 60; ; R *= 2) {
+      let poly = [[0, 0], [W, 0], [W, H], [0, H]];
+      for (const bi of around(a, R)) if (bi !== ai) poly = clipHalf(poly, a, sites[bi]);
+      const r = Math.max(0, ...poly.map(p => Math.hypot(p[0] - a.x, p[1] - a.y)));
+      if (2 * r <= R || R > 4000) {
+        poly = poly.filter((p, i) => { const q = poly[(i + 1) % poly.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-6; });
+        cells.push(poly); radius.push(r); break;
+      }
+    }
+  });
+  sites.forEach((a, i) => { for (const j of around(a, 2 * radius[i] + 1)) if (j > i) pairs.push([i, j]); });
+  return { cells, pairs };
+}
 const area = poly => poly.reduce((s, p, i) => { const q = poly[(i + 1) % poly.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2;
 // Clip any polygon (e.g. a coastline) by a convex one.
 function clipConvex(subject, conv) {
@@ -268,6 +392,7 @@ function clipConvex(subject, conv) {
   let out = subject;
   for (let i = 0; i < conv.length && out.length; i++) {
     const a = conv[i], b = conv[(i + 1) % conv.length], inp = out;
+    if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-6) continue; // a near-zero edge has a meaningless direction
     const d = p => sg * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
     out = [];
     for (let j = 0; j < inp.length; j++) {
@@ -288,9 +413,26 @@ function inLand(x, y) {
 }
 const nearest = (sites, x, y) => { let best = null, bd = Infinity; for (const s of sites) { const d = (s.x - x) ** 2 + (s.y - y) ** 2; if (d < bd) { bd = d; best = s; } } return best; };
 const fmt = p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`;
-const pathOf = poly => `M${poly.map(fmt).join('L')}Z`;
+// Drawing only: densify every line and nudge each point by one smooth displacement field, so borders and
+// coasts look hand-drawn. Shared edges get identical nudges, so neighbours still meet exactly; the board
+// edge stays put. Adjacency is computed on the unwarped geometry.
+function warpPt([x, y]) {
+  const f = Math.max(0, Math.min(1, Math.min(x, y, W - x, H - y) / 20));
+  return [x + f * (3.2 * Math.sin(y * 0.069 + x * 0.021) + 1.2 * Math.sin(y * 0.23 + 1.7) * Math.cos(x * 0.19)),
+    y + f * (3.2 * Math.sin(x * 0.072 - y * 0.017 + 2.1) + 1.2 * Math.cos(x * 0.21 + 0.4) * Math.sin(y * 0.25))];
+}
+function warp(pts, closed) {
+  const out = [], n = pts.length;
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p = pts[i], q = pts[(i + 1) % n], k = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 4));
+    for (let j = 0; j < k; j++) out.push(warpPt([p[0] + ((q[0] - p[0]) * j) / k, p[1] + ((q[1] - p[1]) * j) / k]));
+  }
+  if (!closed) out.push(warpPt(pts[n - 1]));
+  return out;
+}
+const pathOf = poly => `M${warp(poly, true).map(fmt).join('L')}Z`;
 
-const landCells = voronoi(landSites), seaCells = voronoi(seaSites);
+const { cells: landCells, pairs: landPairs } = voronoi(landSites), { cells: seaCells, pairs: seaPairs } = voronoi(seaSites);
 
 // Province outlines for drawing (land = its cells cut to the coastline; sea = its cells, drawn under the land).
 export const SHAPES = Object.fromEntries(IDS.map(id => [id, '']));
@@ -299,7 +441,8 @@ landCells.forEach((cell, i) => {
   const d = COASTLINES.map(c => clipConvex(c, cell)).filter(p => p.length > 2 && Math.abs(area(p)) > 0.5).map(pathOf).join('');
   if (landSites[i].prov) SHAPES[landSites[i].prov] += d; else voidD += d;
 });
-seaCells.forEach((cell, i) => { SHAPES[seaSites[i].prov] += pathOf(cell); });
+// Seas share one colour, so their fills stay unwarped (their dashed borders are warped).
+seaCells.forEach((cell, i) => { SHAPES[seaSites[i].prov] += `M${cell.map(fmt).join('L')}Z`; });
 export const VOID_D = voidD;
 export const COAST_D = COASTLINES.map(pathOf).join('');
 
@@ -309,8 +452,9 @@ const near = (p, q) => Math.abs(p[0] - q[0]) < 0.5 && Math.abs(p[1] - q[1]) < 0.
 
 // Borders between different provinces: land borders count only where they cross land, sea borders only over water.
 const borderD = { land: '', sea: '' };
-function borders(cells, sites, onLand) {
-  for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) {
+function borders(cells, sites, pairs, onLand) {
+  const shared = {}; // total border length per province pair (a border is made of many small cell edges)
+  for (const [i, j] of pairs) {
     const a = sites[i].prov, b = sites[j].prov;
     if (a === b) continue;
     const s = cells[i].filter(p => cells[j].some(q => near(p, q)));
@@ -323,15 +467,16 @@ function borders(cells, sites, onLand) {
       if ((!ok || k === n) && run) {
         const e = ok ? [x, y] : [p[0] + ((q[0] - p[0]) * (k - 1)) / n, p[1] + ((q[1] - p[1]) * (k - 1)) / n];
         const l = Math.hypot(e[0] - run[0], e[1] - run[1]);
-        if (a && b && l > 0) borderD[onLand ? 'land' : 'sea'] += `M${fmt(run)}L${fmt(e)}`;
+        if (a && b && l > 0) borderD[onLand ? 'land' : 'sea'] += `M${warp([run, e], false).map(fmt).join('L')}`;
         total += l; run = null;
       }
     }
-    if (total > (onLand ? 6 : 3)) link(a, b, onLand ? 'army' : 'fleet'); // seas meet through narrow straits
+    if (a && b) { const k = a < b ? a + '|' + b : b + '|' + a; shared[k] = (shared[k] || 0) + total; }
   }
+  for (const k in shared) if (shared[k] > (onLand ? 6 : 3)) { const [a, b] = k.split('|'); link(a, b, onLand ? 'army' : 'fleet'); } // seas meet through narrow straits
 }
-borders(landCells, landSites, true);
-borders(seaCells, seaSites, false);
+borders(landCells, landSites, landPairs, true);
+borders(seaCells, seaSites, seaPairs, false);
 export const BORDERS = borderD;
 
 // Walk every coastline: which land and sea province meet there, and where land borders reach the sea.

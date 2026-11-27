@@ -12,42 +12,43 @@ let n = 0;
 const t = (name, fn) => { fn(); n++; };
 
 t('map: geography the tests rely on', () => {
-  for (const [a, b] of [['PAR', 'BRU'], ['FLA', 'BRU'], ['RHI', 'BRU'], ['AMS', 'BRU'], ['BRU', 'ALS'], ['ALS', 'PAR'], ['NML', 'FLA']]) assert.ok(ARMY_ADJ[a].includes(b), `${a}-${b}`);
-  assert.ok(!ARMY_ADJ.LON.includes('NML') && !ARMY_ADJ.SIC.includes('CAL') && !ARMY_ADJ.MOR.includes('AND') && !ARMY_ADJ.DUB.includes('GLA'), 'no land bridges across water');
+  for (const [a, b] of [['FLA', 'BRU'], ['AMS', 'BRU'], ['RHI', 'BRU'], ['RHI', 'AMS'], ['FLA', 'PAR'], ['NML', 'FLA'], ['CHA', 'ALS'], ['PAR', 'CHA']]) assert.ok(ARMY_ADJ[a].includes(b), `${a}-${b}`);
+  assert.ok(!ARMY_ADJ.PAR.includes('BRU'), 'France meets Belgium through Flanders and Champagne');
+  assert.ok(!ARMY_ADJ.LON.includes('NML') && !ARMY_ADJ.LON.includes('FLA') && !ARMY_ADJ.SIC.includes('CAL') && !ARMY_ADJ.MOR.includes('AND') && !ARMY_ADJ.DUB.includes('GLA'), 'no land bridges across water');
   assert.ok(FLEET_ADJ.CHN.includes('LON') && FLEET_ADJ.CHN.includes('NML') && FLEET_ADJ.CHN.includes('BRT'));
   assert.ok(!FLEET_ADJ.AEG.includes('WBS') && FLEET_ADJ.CON.includes('WBS') && FLEET_ADJ.CON.includes('AEG'), 'the straits run through Constantinople');
   for (const id in PROVS) for (const m of FLEET_ADJ[id]) assert.ok(FLEET_ADJ[m].includes(id), `asymmetric ${id}-${m}`);
 });
 t('bounce', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['GER', 'A', 'RHI']]), { FRA: [M('PAR', 'BRU')], GER: [M('RHI', 'BRU')] });
-  assert.equal(at(r, 'PAR'), 'FRA'); assert.equal(at(r, 'RHI'), 'GER'); assert.equal(at(r, 'BRU'), undefined);
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['GER', 'A', 'RHI']]), { FRA: [M('FLA', 'BRU')], GER: [M('RHI', 'BRU')] });
+  assert.equal(at(r, 'FLA'), 'FRA'); assert.equal(at(r, 'RHI'), 'GER'); assert.equal(at(r, 'BRU'), undefined);
 });
 t('supported move wins', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['GER', 'A', 'RHI']]), { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')], GER: [M('RHI', 'BRU')] });
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['GER', 'A', 'RHI']]), { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')], GER: [M('RHI', 'BRU')] });
   assert.equal(at(r, 'BRU'), 'FRA');
 });
 t('dislodge + retreat options exclude attacker origin', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['GER', 'A', 'BRU']]), { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')] });
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['GER', 'A', 'BRU']]), { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')] });
   assert.equal(r.phase, 'R'); assert.equal(at(r, 'BRU'), 'FRA');
-  assert.ok(!r.dislodged[0].options.includes('PAR')); assert.ok(r.dislodged[0].options.includes('RHI'));
+  assert.ok(!r.dislodged[0].options.includes('FLA')); assert.ok(r.dislodged[0].options.includes('RHI'));
 });
 t('support cut', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['GER', 'A', 'BRU'], ['BRI', 'A', 'NML']]), { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')], BRI: [M('NML', 'FLA')] });
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['GER', 'A', 'BRU'], ['BRI', 'F', 'DOG']]), { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')], BRI: [M('DOG', 'AMS')] });
   assert.equal(at(r, 'BRU'), 'GER');
 });
 t('attack from target does not cut support', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['GER', 'A', 'BRU']]), { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')], GER: [M('BRU', 'FLA')] });
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['GER', 'A', 'BRU']]), { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')], GER: [M('BRU', 'AMS')] });
   assert.equal(at(r, 'BRU'), 'FRA'); assert.equal(r.dislodged[0].prov, 'BRU');
 });
 t('head-to-head', () => {
-  let r = resolveMovement(S([['FRA', 'A', 'PAR'], ['GER', 'A', 'BRU']]), { FRA: [M('PAR', 'BRU')], GER: [M('BRU', 'PAR')] });
-  assert.equal(at(r, 'PAR'), 'FRA'); assert.equal(at(r, 'BRU'), 'GER');
-  r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['GER', 'A', 'BRU']]), { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')], GER: [M('BRU', 'PAR')] });
+  let r = resolveMovement(S([['FRA', 'A', 'FLA'], ['GER', 'A', 'BRU']]), { FRA: [M('FLA', 'BRU')], GER: [M('BRU', 'FLA')] });
+  assert.equal(at(r, 'FLA'), 'FRA'); assert.equal(at(r, 'BRU'), 'GER');
+  r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['GER', 'A', 'BRU']]), { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')], GER: [M('BRU', 'FLA')] });
   assert.equal(at(r, 'BRU'), 'FRA'); assert.equal(r.dislodged[0].prov, 'BRU');
 });
 t('circular movement', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['GER', 'A', 'BRU'], ['ITA', 'A', 'ALS']]), { FRA: [M('PAR', 'BRU')], GER: [M('BRU', 'ALS')], ITA: [M('ALS', 'PAR')] });
-  assert.equal(at(r, 'BRU'), 'FRA'); assert.equal(at(r, 'ALS'), 'GER'); assert.equal(at(r, 'PAR'), 'ITA');
+  const r = resolveMovement(S([['FRA', 'A', 'AMS'], ['GER', 'A', 'BRU'], ['ITA', 'A', 'RHI']]), { FRA: [M('AMS', 'BRU')], GER: [M('BRU', 'RHI')], ITA: [M('RHI', 'AMS')] });
+  assert.equal(at(r, 'BRU'), 'FRA'); assert.equal(at(r, 'RHI'), 'GER'); assert.equal(at(r, 'AMS'), 'ITA');
 });
 t('convoy', () => {
   const r = resolveMovement(S([['BRI', 'A', 'LON'], ['BRI', 'F', 'CHN']]), { BRI: [M('LON', 'NML'), C('CHN', 'LON', 'NML')] });
@@ -59,12 +60,12 @@ t('disrupted convoy', () => {
   assert.equal(at(r, 'LON'), 'BRI'); assert.equal(at(r, 'CHN'), 'FRA');
 });
 t('no self-dislodge', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['FRA', 'A', 'BRU']]), { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')] });
-  assert.equal(at(r, 'PAR'), 'FRA'); assert.equal(r.dislodged.length, 0);
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['FRA', 'A', 'BRU']]), { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')] });
+  assert.equal(at(r, 'FLA'), 'FRA'); assert.equal(r.dislodged.length, 0);
 });
 t('beleaguered garrison', () => {
-  const r = resolveMovement(S([['FRA', 'A', 'PAR'], ['FRA', 'A', 'FLA'], ['GER', 'A', 'RHI'], ['GER', 'A', 'AMS'], ['ITA', 'A', 'BRU']]),
-    { FRA: [M('PAR', 'BRU'), Sup('FLA', 'PAR', 'BRU')], GER: [M('RHI', 'BRU'), Sup('AMS', 'RHI', 'BRU')] });
+  const r = resolveMovement(S([['FRA', 'A', 'FLA'], ['FRA', 'A', 'AMS'], ['GER', 'A', 'RHI'], ['GER', 'F', 'CHN'], ['ITA', 'A', 'BRU']]),
+    { FRA: [M('FLA', 'BRU'), Sup('AMS', 'FLA', 'BRU')], GER: [M('RHI', 'BRU'), Sup('CHN', 'RHI', 'BRU')] });
   assert.equal(at(r, 'BRU'), 'ITA');
 });
 t('illegal orders become holds', () => {
@@ -78,12 +79,23 @@ t('retreat collision disbands both', () => {
 });
 t('fall capture -> build', () => {
   let s = initialState();
-  s = step(s, { FRA: [M('PAR', 'BRU')] });               // Spring
-  s = step(s, {});                                      // Fall: hold in Belgium
+  s = step(s, { FRA: [M('PAR', 'FLA')] });               // Spring: Paris to Flanders
+  s = step(s, { FRA: [M('FLA', 'BRU')] });               // Fall: into Belgium
   assert.equal(s.owners.BRU, 'FRA'); assert.equal(s.phase, 'A');
   assert.deepEqual(needsOrders(s), ['FRA']);
   s = step(s, { FRA: [{ type: 'B', prov: 'PAR', unitType: 'A' }] });
   assert.equal(at(s, 'PAR'), 'FRA'); assert.equal(s.year, 2); assert.equal(scCount(s, 'FRA'), 4);
+});
+
+t('starting territories, taken over by Fall occupation', () => {
+  let s = initialState();
+  assert.equal(s.control.HIG, 'BRI'); assert.equal(s.control.LON, 'BRI'); assert.equal(s.control.ALS, 'GER'); assert.equal(s.control.BRU, undefined);
+  assert.equal(scCount(s, 'BRI'), 3, 'territory is not supply centres');
+  s.units.push({ power: 'FRA', type: 'A', prov: 'CHA' });
+  s = step(s, { FRA: [M('CHA', 'ALS')] });   // Spring
+  assert.equal(s.control.ALS, 'GER');         // only Fall counts
+  s = step(s, {});
+  assert.equal(s.control.ALS, 'FRA'); assert.equal(scCount(s, 'FRA'), 3);
 });
 
 const { botOrders, newRelations, considerProposal } = await import('./ai.js');

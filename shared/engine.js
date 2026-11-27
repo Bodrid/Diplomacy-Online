@@ -5,12 +5,14 @@ import { PROVS, IDS, POWERS, ARMY_ADJ, FLEET_ADJ, canMove, WIN } from './map.js'
 export const SEASON = { S: 'Spring', F: 'Fall', W: 'Winter' };
 
 export function initialState(maxYear = 20) {
-  const units = [], owners = {};
+  const units = [], owners = {}, control = {};
   for (const id of IDS) {
     const p = PROVS[id];
     if (p.home) { owners[id] = p.home; units.push({ power: p.home, type: p.unit, prov: id }); }
+    if (p.region) control[id] = p.region;
   }
-  return { year: 1, season: 'S', phase: 'M', units, owners, dislodged: [], maxYear, over: false, winner: null };
+  // owners = supply centres (the rules); control = who holds each land province (display only).
+  return { year: 1, season: 'S', phase: 'M', units, owners, control, dislodged: [], maxYear, over: false, winner: null };
 }
 
 export const unitAt = (s, prov) => s.units.find(u => u.prov === prov);
@@ -254,7 +256,10 @@ function advance(s, adjusted = false) {
   s.dislodged = [];
   if (s.season === 'S') return { ...s, season: 'F', phase: 'M' };
   if (s.season === 'F' && !adjusted) {
-    for (const u of s.units) if (PROVS[u.prov].sc) s.owners[u.prov] = u.power;
+    for (const u of s.units) {
+      if (PROVS[u.prov].sc) s.owners[u.prov] = u.power;
+      if (PROVS[u.prov].land && s.control) s.control[u.prov] = u.power;
+    }
     const best = Object.keys(POWERS).sort((a, b) => scCount(s, b) - scCount(s, a))[0];
     if (scCount(s, best) >= WIN) return { ...s, over: true, winner: best };
     if (Object.keys(adjustments(s)).length) return { ...s, season: 'W', phase: 'A' };

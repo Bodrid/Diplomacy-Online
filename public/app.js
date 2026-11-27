@@ -182,9 +182,10 @@ function unitSvg(u, x, y, extra = '', id = '') {
 // Provinces, labels and supply centres: everything except units and orders.
 function baseMap(s, T) {
   const p = me();
-  let h = '<defs>' + Object.entries(COLORS).map(([k, c]) => `<marker id="arrow-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join('') + '</defs>';
+  // The board clip stops coastlines that run past the map edge from showing in the letterbox area.
+  let h = '<defs><clipPath id="board"><rect width="1000" height="700"/></clipPath>' + Object.entries(COLORS).map(([k, c]) => `<marker id="arrow-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join('') + '</defs><g clip-path="url(#board)">';
   const prov = id => {
-    const pr = PROVS[id], owner = pr.sc && s.owners[id];
+    const pr = PROVS[id], owner = pr.sc ? s.owners[id] : pr.land && s.control?.[id];
     const fill = owner ? ` style="fill:color-mix(in srgb, ${POWERS[owner].color} 42%, var(--land))"` : '';
     const own = unitAt(s, id)?.power === p || s.dislodged?.some(d => d.prov === id && d.power === p);
     return `<path class="prov ${pr.land ? 'land' : 'sea'} ${T.has(id) ? 'target' : ''} ${own && canAct() ? 'clickable' : ''}" data-id="${id}" d="${SHAPES[id]}"${fill}/>`;
@@ -192,10 +193,10 @@ function baseMap(s, T) {
   // Seas sit underneath; land (cut to the coastline) is drawn on top, then borders and coasts.
   h += IDS.filter(id => !PROVS[id].land).map(prov).join('') + `<path class="border-sea" d="${BORDERS.sea}"/>`;
   h += IDS.filter(id => PROVS[id].land).map(prov).join('') + `<path class="void" d="${VOID_D}"/>`;
-  h += `<path class="border-land" d="${BORDERS.land}"/><path class="coast" d="${COAST_D}"/>`;
+  h += `<path class="border-land" d="${BORDERS.land}"/><path class="coast" d="${COAST_D}"/></g>`;
   for (const id of IDS) {
     const pr = PROVS[id];
-    h += `<text class="plabel ${pr.land ? '' : 'sea'}" x="${pr.x}" y="${pr.y + 18}">${esc(pr.name)}</text>`;
+    h += `<text class="plabel ${pr.land ? '' : 'sea'}" x="${pr.x}" y="${pr.y > 680 ? pr.y - 22 : pr.y + 18}">${esc(pr.name)}</text>`;
     if (pr.sc) h += `<circle class="sc" cx="${pr.x}" cy="${pr.y - 14}" r="3.5" fill="${s.owners[id] ? POWERS[s.owners[id]].color : '#5b6578'}"/>`;
   }
   return h;
@@ -224,7 +225,8 @@ $('#map').addEventListener('mouseover', e => {
   const id = e.target.closest?.('[data-id]')?.dataset.id;
   if (!id || !V?.state) { $('#hoverInfo').textContent = ''; return; }
   const pr = PROVS[id], s = V.state, u = unitAt(s, id), o = s.owners[id];
-  $('#hoverInfo').textContent = [pr.name, pr.sc ? `supply centre${o ? ' · ' + POWERS[o].name : ' · neutral'}` : pr.land ? '' : 'sea',
+  const c = s.control?.[id];
+  $('#hoverInfo').textContent = [pr.name, pr.sc ? `supply centre${o ? ' · ' + POWERS[o].name : ' · neutral'}` : pr.land ? (c ? `${POWERS[c].name} territory` : 'neutral') : 'sea',
     u ? `${u.type === 'A' ? 'army' : 'fleet'} of ${POWERS[u.power].name}` : ''].filter(Boolean).join(' · ');
 });
 $('#map').addEventListener('mouseleave', () => ($('#hoverInfo').textContent = ''));
