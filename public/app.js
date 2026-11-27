@@ -256,6 +256,34 @@ function zoomTo(b, ms = 650) {
     if (k < 1 && !skipping) requestAnimationFrame(step); else { setVB(b); done(); }
   }));
 }
+// ---------- Zoom & pan (wheel, drag, pinch, buttons) ----------
+const fitVB = ([x, y, w]) => { w = Math.min(1000, Math.max(160, w)); const h = w * 0.7; return [Math.min(Math.max(x, 0), 1000 - w), Math.min(Math.max(y, 0), 700 - h), w, h]; };
+const toMap = (cx, cy) => new DOMPoint(cx, cy).matrixTransform($('#map').getScreenCTM().inverse());
+function zoomAt(p, f) { const k = fitVB([0, 0, vb[2] * f])[2] / vb[2]; setVB(fitVB([p.x - (p.x - vb[0]) * k, p.y - (p.y - vb[1]) * k, vb[2] * k])); }
+const centre = () => ({ x: vb[0] + vb[2] / 2, y: vb[1] + vb[3] / 2 });
+$('#zoomIn').onclick = () => !replaying && zoomTo(fitVB(((p, w) => [p.x - w / 2, p.y - w * 0.35, w])(centre(), vb[2] / 1.6)), 250);
+$('#zoomOut').onclick = () => !replaying && zoomTo(fitVB(((p, w) => [p.x - w / 2, p.y - w * 0.35, w])(centre(), vb[2] * 1.6)), 250);
+$('#zoomFit').onclick = () => !replaying && zoomTo(FULL, 250);
+$('#map').addEventListener('wheel', e => { e.preventDefault(); if (!replaying) zoomAt(toMap(e.clientX, e.clientY), Math.exp(e.deltaY * 0.0015)); }, { passive: false });
+{
+  const pts = new Map(), svg = $('#map');
+  let moved = 0, pinch = 0;
+  const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  svg.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = 0; if (pts.size === 2) pinch = spread(); });
+  svg.addEventListener('pointermove', e => {
+    const p = pts.get(e.pointerId);
+    if (!p || replaying) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (moved > 6 && !svg.hasPointerCapture(e.pointerId)) { svg.setPointerCapture(e.pointerId); svg.classList.add('panning'); }
+    p.x = e.clientX; p.y = e.clientY;
+    if (pts.size === 2) { const d = spread(), [a, b] = [...pts.values()]; if (pinch) zoomAt(toMap((a.x + b.x) / 2, (a.y + b.y) / 2), pinch / d); pinch = d; }
+    else if (moved > 6) { const s = svg.getScreenCTM().a; setVB(fitVB([vb[0] - dx / s, vb[1] - dy / s, vb[2]])); }
+  });
+  const up = e => { pts.delete(e.pointerId); pinch = 0; if (!pts.size) svg.classList.remove('panning'); };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  svg.addEventListener('click', e => { if (moved > 6) e.stopImmediatePropagation(); }, true); // a drag is not a click on a province
+}
 function boxAround(ids) {
   const xs = ids.map(i => PROVS[i].x), ys = ids.map(i => PROVS[i].y);
   const x0 = Math.min(...xs) - 90, x1 = Math.max(...xs) + 90, y0 = Math.min(...ys) - 80, y1 = Math.max(...ys) + 80;
@@ -301,7 +329,7 @@ function caption({ t, list, moves, d }) {
 async function replay(results) {
   if (!results?.length || replaying || !V?.started) return;
   replaying = true; skipping = false;
-  const svg = $('#map'), all = beats(results);
+  const svg = $('#map'), all = beats(results), home = vb.slice();
   const loud = all.filter(b => !b.quiet).slice(0, 8), quiet = all.filter(b => !loud.includes(b));
   svg.innerHTML = baseMap(V.state, new Set()) + '<g id="fx"></g>' +
     results.map(r => unitSvg({ power: r.power, type: r.utype }, PROVS[r.unit].x, PROVS[r.unit].y, '', r.unit)).join('');
@@ -337,7 +365,7 @@ async function replay(results) {
   for (const b of loud) await play([b], boxAround([b.t, ...b.list.flatMap(r => [r.unit, r.from].filter(Boolean))]), caption(b));
   if (quiet.length) await play(quiet, FULL, quiet.length === 1 ? caption(quiet[0]) : `${quiet.length} other units move unopposed.`);
   await wait(skipping ? 0 : 300);
-  await zoomTo(FULL);
+  await zoomTo(home);
   svg.classList.remove('replay');
   $('#caption').hidden = true;
   replaying = false;

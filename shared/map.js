@@ -432,7 +432,18 @@ function warp(pts, closed) {
 }
 const pathOf = poly => `M${warp(poly, true).map(fmt).join('L')}Z`;
 
-const { cells: landCells, pairs: landPairs } = voronoi(landSites), { cells: seaCells, pairs: seaPairs } = voronoi(seaSites);
+// Merge corners closer than 0.6 px (where 4+ cells nearly meet), so every border line ends exactly where its neighbours do.
+function snap(cells) {
+  const grid = new Map(), key = (x, y) => Math.floor(x) + ',' + Math.floor(y);
+  const canon = p => {
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++)
+      for (const c of grid.get(key(p[0] + dx, p[1] + dy)) || []) if (Math.hypot(c[0] - p[0], c[1] - p[1]) < 0.6) return c;
+    const k = key(...p); grid.set(k, [...(grid.get(k) || []), p]); return p;
+  };
+  return cells.map(cell => cell.map(canon).filter((p, i, a) => p !== a[(i + 1) % a.length]));
+}
+let { cells: landCells, pairs: landPairs } = voronoi(landSites), { cells: seaCells, pairs: seaPairs } = voronoi(seaSites);
+landCells = snap(landCells); seaCells = snap(seaCells);
 
 // Province outlines for drawing (land = its cells cut to the coastline; sea = its cells, drawn under the land).
 export const SHAPES = Object.fromEntries(IDS.map(id => [id, '']));
@@ -459,13 +470,18 @@ function borders(cells, sites, pairs, onLand) {
     if (a === b) continue;
     const s = cells[i].filter(p => cells[j].some(q => near(p, q)));
     if (s.length < 2) continue;
-    const [p, q] = s, len = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(2, Math.ceil(len / 2));
+    // the shared edge runs between the two farthest shared corners (near-duplicate corners would give a stub)
+    let p = s[0], q = s[1];
+    for (const u of s) for (const v of s) if (Math.hypot(v[0] - u[0], v[1] - u[1]) > Math.hypot(q[0] - p[0], q[1] - p[1])) { p = u; q = v; }
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(2, Math.ceil(len / 2));
+    const at = t => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t], okAt = t => inLand(...at(t)) === onLand;
+    const edge = (lo, hi) => { for (let r = 0; r < 12; r++) { const m = (lo + hi) / 2; if (okAt(m) === okAt(lo)) lo = m; else hi = m; } return at((lo + hi) / 2); }; // exact coast crossing
     let run = null, total = 0;
     for (let k = 0; k <= n; k++) {
-      const x = p[0] + ((q[0] - p[0]) * k) / n, y = p[1] + ((q[1] - p[1]) * k) / n, ok = inLand(x, y) === onLand;
-      if (ok && !run) run = [x, y];
+      const [x, y] = at(k / n), ok = okAt(k / n);
+      if (ok && !run) run = k ? edge((k - 1) / n, k / n) : [x, y];
       if ((!ok || k === n) && run) {
-        const e = ok ? [x, y] : [p[0] + ((q[0] - p[0]) * (k - 1)) / n, p[1] + ((q[1] - p[1]) * (k - 1)) / n];
+        const e = ok ? [x, y] : edge((k - 1) / n, k / n);
         const l = Math.hypot(e[0] - run[0], e[1] - run[1]);
         if (a && b && l > 0) borderD[onLand ? 'land' : 'sea'] += `M${warp([run, e], false).map(fmt).join('L')}`;
         total += l; run = null;
