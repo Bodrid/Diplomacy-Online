@@ -1,0 +1,12 @@
+{
+  "name": "accord",
+  "private": true,
+  "type": "module",
+  "description": "Diplomacy-style strategy game where empty seats are played by bots",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js",
+    "test:ai": "node test.js --ai"
+  },
+  "engines": { "node": ">=20" }
+}

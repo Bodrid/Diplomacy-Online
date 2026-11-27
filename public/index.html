@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accord</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Home -->
+  <main id="home" class="screen">
+    <div class="hero">
+      <div class="brand"><span class="logo"></span>Accord</div>
+      <h1>Seven powers. One continent.<br><span>Humans and bots at the same table.</span></h1>
+      <p class="muted">Simultaneous orders, supports, convoys and backstabs. Invite your friends; every empty seat is played by an AI.</p>
+    </div>
+    <div class="cards">
+      <form id="createForm" class="card">
+        <h2>New game</h2>
+        <label>Your name<input name="name" maxlength="20" required autocomplete="nickname"></label>
+        <fieldset>
+          <legend>Bot difficulty</legend>
+          <div class="levels" role="radiogroup">
+            <label class="level"><input type="radio" name="level" value="easy"><b>Easy</b><small>Loose, random play. Good for learning the rules.</small></label>
+            <label class="level"><input type="radio" name="level" value="medium"><b>Medium</b><small>Solid tactics, no long-term plan.</small></label>
+            <label class="level"><input type="radio" name="level" value="hard" checked><b>Hard</b><small>Plans wars, coordinates supports, keeps its word and remembers betrayals. Beatable.</small></label>
+            <label class="level brutal"><input type="radio" name="level" value="brutal"><b>Brutal</b><small>Near-perfect tactics. Sees orders you've already submitted. Breaks deals when it pays.</small></label>
+          </div>
+        </fieldset>
+        <div class="row2">
+          <label>Turn timer
+            <select name="deadline">
+              <option value="0">No limit</option><option value="120">2 minutes</option><option value="300" selected>5 minutes</option>
+              <option value="600">10 minutes</option><option value="1800">30 minutes</option><option value="3600">1 hour</option><option value="86400">24 hours</option>
+            </select>
+          </label>
+          <label>Game length
+            <select name="maxYear"><option value="10">10 years</option><option value="15">15 years</option><option value="20" selected>20 years</option><option value="30">30 years</option></select>
+          </label>
+        </div>
+        <button class="primary">Create room</button>
+      </form>
+      <form id="joinForm" class="card">
+        <h2>Join a game</h2>
+        <label>Your name<input name="name" maxlength="20" required autocomplete="nickname"></label>
+        <label>Room code<input name="code" maxlength="5" required class="code-input" autocomplete="off" spellcheck="false"></label>
+        <button class="primary">Join</button>
+        <p class="error" id="homeError" role="alert"></p>
+      </form>
+    </div>
+  </main>
+
+  <!-- Lobby -->
+  <main id="lobby" class="screen" hidden>
+    <div class="lobby-head">
+      <div class="brand"><span class="logo"></span>Accord</div>
+      <div class="room-code">Room <b id="lobbyCode"></b><button id="copyLink" class="ghost">Copy invite link</button></div>
+    </div>
+    <p class="muted" id="lobbyInfo"></p>
+    <div id="seatGrid" class="seat-grid"></div>
+    <div class="lobby-foot">
+      <span class="muted" id="spectators"></span>
+      <button id="startBtn" class="primary">Start game</button>
+    </div>
+  </main>
+
+  <!-- Game -->
+  <main id="game" class="screen" hidden>
+    <header class="topbar">
+      <div class="brand small"><span class="logo"></span>Accord</div>
+      <div class="phase"><span id="phase"></span><span id="timer" class="timer"></span></div>
+      <div id="standings" class="standings"></div>
+    </header>
+    <div class="board">
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet" aria-label="Game map"></svg>
+        <div class="map-tools">
+          <button id="lastTurnBtn" class="chip" aria-pressed="false">Show last turn</button>
+        </div>
+        <div id="hoverInfo" class="hover-info"></div>
+        <div id="banner" class="banner" hidden></div>
+      </div>
+      <aside class="side">
+        <nav class="tabs" role="tablist">
+          <button role="tab" data-tab="orders" class="active">Orders</button>
+          <button role="tab" data-tab="diplo">Diplomacy <span id="unread" class="badge" hidden></span></button>
+          <button role="tab" data-tab="log">Log</button>
+        </nav>
+        <section id="tab-orders" class="tab"></section>
+        <section id="tab-diplo" class="tab" hidden>
+          <div id="channels" class="channels"></div>
+          <div id="messages" class="messages" aria-live="polite"></div>
+          <div id="composer" class="composer"></div>
+        </section>
+        <section id="tab-log" class="tab" hidden></section>
+      </aside>
+    </div>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
